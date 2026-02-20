@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Johnson Family Mystery - Escape Room</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Crimson Text', serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .font-serif { font-family: 'Cinzel', serif; }
+        
+        /* Screens */
+        .screen { display: none; min-height: 100vh; }
+        .screen.active { display: block; }
+        .intro-screen { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .intro-screen.active { display: flex; }
+        .victory-screen, .gameover-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .victory-screen.active, .gameover-screen.active { display: flex; }
+        .victory-screen { background: linear-gradient(135deg, #052e16 0%, #0f172a 50%, #052e16 100%); }
+        .gameover-screen { background: linear-gradient(135deg, #450a0a 0%, #0f172a 50%, #450a0a 100%); }
+        
+        /* Top Bar */
+        .top-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); border-bottom: 2px solid #f59e0b; padding: 10px 15px; z-index: 100; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .progress-bar { position: fixed; top: 52px; left: 0; right: 0; background: rgba(0,0,0,0.5); padding: 6px; z-index: 99; display: flex; justify-content: center; gap: 6px; }
+        .progress-step { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 14px; }
+        .progress-step.active { background: #f59e0b; color: #0f172a; }
+        .progress-step.completed { background: #22c55e; color: white; }
+        .progress-step.pending { background: #334155; color: #94a3b8; }
+        
+        /* Main Content */
+        .main-content { padding-top: 100px; padding-bottom: 20px; max-width: 800px; margin: 0 auto; padding-left: 12px; padding-right: 12px; }
+        
+        /* Cards */
+        .card { background: rgba(0,0,0,0.5); border: 1px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+        .card h2, .card h3 { font-family: 'Cinzel', serif; color: #f59e0b; margin-bottom: 10px; font-size: 1.2rem; }
+        
+        /* Character Grid */
+        .char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+        .char-card { background: rgba(30,41,59,0.8); border: 1px solid #475569; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .char-card:hover { border-color: #f59e0b; transform: translateY(-2px); }
+        .char-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #1e293b, #334155); border: 2px solid #475569; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .char-card .name { font-family: 'Cinzel', serif; color: #f59e0b; font-size: 13px; }
+        .char-card .role { color: #94a3b8; font-size: 11px; }
+        
+        /* Inputs */
+        .question-input { width: 100%; background: rgba(15,23,42,0.8); border: 1px solid #475569; border-radius: 6px; padding: 8px 12px; color: #e2e8f0; font-family: 'Crimson Text', serif; font-size: 15px; margin-top: 6px; }
+        .question-input:focus { outline: none; border-color: #f59e0b; }
+        .question-input:disabled { opacity: 0.5; }
+        .question-item { background: rgba(30,41,59,0.5); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+        .question-text { color: #fcd34d; font-size: 14px; }
+        
+        .blank-input { width: 60px; background: rgba(15,23,42,0.8); border: 1px solid #f59e0b; border-radius: 4px; padding: 4px 6px; color: #f59e0b; text-align: center; font-family: 'Crimson Text', serif; font-size: 14px; }
+        .blank-input:focus { outline: none; }
+        
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 20px; font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #f59e0b, #d97706); color: #0f172a; }
+        .btn-primary:hover { transform: scale(1.03); }
+        .btn-primary:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; transform: none; }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-hint { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; padding: 6px 12px; font-size: 12px; }
+        .btn-hint:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Code Display */
+        .code-display { display: flex; justify-content: center; gap: 10px; margin: 15px 0; }
+        .code-digit { width: 40px; height: 50px; background: rgba(245,158,11,0.1); border: 2px solid #f59e0b; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 20px; color: #f59e0b; }
+        .code-digit.revealed { background: rgba(245,158,11,0.25); }
+        
+        /* Timer */
+        .timer { font-family: 'Cinzel', serif; font-size: 20px; }
+        .timer.warning { color: #ef4444; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 200; justify-content: center; align-items: center; padding: 15px; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1e293b; border: 2px solid #f59e0b; border-radius: 12px; max-width: 350px; width: 100%; max-height: 80vh; overflow-y: auto; }
+        .modal-body { padding: 15px; }
+        .modal-body h3 { font-family: 'Cinzel', serif; color: #f59e0b; margin-bottom: 5px; font-size: 1.1rem; }
+        .modal-body .role { color: #94a3b8; margin-bottom: 12px; font-size: 14px; }
+        .info-item { background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; margin-bottom: 8px; font-size: 13px; }
+        .info-item strong { color: #f59e0b; }
+        .modal-close { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+        .modal-header { position: relative; padding: 15px; text-align: center; background: rgba(0,0,0,0.3); }
+        .modal-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #1e293b, #334155); border: 3px solid #f59e0b; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+        
+        /* Reading Text */
+        .reading-text { background: rgba(0,0,0,0.3); border-left: 3px solid #f59e0b; padding: 12px; border-radius: 0 6px 6px 0; white-space: pre-line; line-height: 1.7; max-height: 250px; overflow-y: auto; font-size: 14px; }
+        
+        /* Grammar Box */
+        .grammar-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        .grammar-item { border-radius: 6px; padding: 10px; font-size: 12px; }
+        .grammar-item h4 { font-size: 11px; margin-bottom: 6px; }
+        .grammar-item.affirmative { background: rgba(34,197,94,0.15); border: 1px solid #22c55e; }
+        .grammar-item.negative { background: rgba(239,68,68,0.15); border: 1px solid #ef4444; }
+        .grammar-item.interrogative { background: rgba(245,158,11,0.15); border: 1px solid #f59e0b; }
+        
+        /* Intro */
+        .intro-content { max-width: 450px; }
+        .intro-badge { font-size: 60px; margin-bottom: 15px; }
+        .intro-title { font-family: 'Cinzel', serif; font-size: 26px; color: #f59e0b; margin-bottom: 15px; }
+        
+        @media (max-width: 500px) {
+            .timer { font-size: 16px; }
+            .char-grid { grid-template-columns: repeat(2, 1fr); }
+            .code-digit { width: 35px; height: 45px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="introScreen" class="screen intro-screen active">
+        <div class="intro-content">
+            <div class="intro-badge">🕵️</div>
+            <h1 class="intro-title">The Johnson Family Mystery</h1>
+            <div class="card" style="text-align: left; margin-bottom: 15px; font-size: 15px;">
+                <p style="margin-bottom: 12px;"><strong style="color: #f59e0b;">Detective!</strong> The Johnson family has disappeared. The house is locked and empty.</p>
+                <p style="margin-bottom: 12px;">Your mission: <strong style="color: #f59e0b;">Find clues</strong> - their names, ages, where they're from, and what they look like.</p>
+                <p>Answer questions, complete sentences, and unlock the doors to find them!</p>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; font-size: 11px; color: #94a3b8;">
+                <div class="card" style="padding: 8px;"><div style="font-size: 18px;">🚪</div><div>5 Rooms</div></div>
+                <div class="card" style="padding: 8px;"><div style="font-size: 18px;">⏱️</div><div>45 Min</div></div>
+                <div class="card" style="padding: 8px;"><div style="font-size: 18px;">💡</div><div>3 Hints</div></div>
+                <div class="card" style="padding: 8px;"><div style="font-size: 18px;">🔐</div><div>Codes</div></div>
+            </div>
+            <button class="btn btn-primary" onclick="startGame()" style="font-size: 16px; padding: 12px 35px;">🔍 Begin Investigation</button>
+        </div>
+    </div>
+    
+    <div id="gameScreen" class="screen">
+        <div class="top-bar">
+            <div id="roomName" style="display: flex; align-items: center; gap: 6px;">
+                <span id="roomIcon">🛋️</span>
+                <span class="font-serif" style="color: #f59e0b; font-size: 14px;">Room 1: Living Room</span>
+            </div>
+            <div id="timer" class="timer" style="color: #f59e0b;">⏱️ 45:00</div>
+            <button id="hintBtn" class="btn btn-hint" onclick="useHint()">💡 <span id="hintsLeft">3</span></button>
+        </div>
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="main-content" id="mainContent"></div>
+    </div>
+    
+    <div id="victoryScreen" class="screen victory-screen">
+        <div style="max-width: 450px;">
+            <div style="font-size: 70px; margin-bottom: 15px;">🏆</div>
+            <h1 class="font-serif" style="font-size: 32px; color: #22c55e; margin-bottom: 15px;">Congratulations!</h1>
+            <p style="margin-bottom: 12px;">You found the Johnson family! They were preparing a surprise party!</p>
+            <p id="finalTime" style="color: #f59e0b; margin-bottom: 20px;"></p>
+            <button class="btn btn-success" onclick="location.reload()" style="font-size: 14px;">🔄 Play Again</button>
+        </div>
+    </div>
+    
+    <div id="gameoverScreen" class="screen gameover-screen">
+        <div style="max-width: 450px;">
+            <div style="font-size: 70px; margin-bottom: 15px;">⏰</div>
+            <h1 class="font-serif" style="font-size: 32px; color: #ef4444; margin-bottom: 15px;">Time's Up!</h1>
+            <p style="margin-bottom: 20px;">The Johnson family is still missing... Try again!</p>
+            <button class="btn btn-primary" onclick="location.reload()" style="background: linear-gradient(135deg, #ef4444, #dc2626); font-size: 14px;">🔄 Try Again</button>
+        </div>
+    </div>
+    
+    <div id="charModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div id="modalAvatar" class="modal-avatar"></div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <h3 id="modalName"></h3>
+                <div id="modalRole" class="role"></div>
+                <div id="modalInfo"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="hintModal" class="modal" onclick="closeHintModal()">
+        <div class="modal-content" style="max-width: 320px; padding: 15px;" onclick="event.stopPropagation()">
+            <h3 style="color: #a855f7; margin-bottom: 8px;">💡 Hint</h3>
+            <p id="hintText" style="line-height: 1.5; font-size: 14px;"></p>
+            <button class="btn btn-hint" onclick="closeHintModal()" style="margin-top: 12px; width: 100%;">Got it!</button>
+        </div>
+    </div>
+
+    <script>
+const characters = [
+    { id: 'tom', name: 'Tom Johnson', role: 'Father', age: 45, from: 'London, England', height: 'tall', hair: 'blond hair', eyes: 'blue eyes', nose: 'a small nose', favColor: 'blue', favAnimal: 'dog', emoji: '👨' },
+    { id: 'mary', name: 'Mary Johnson', role: 'Mother', age: 42, from: 'Paris, France', height: 'short and slim', hair: 'black hair', eyes: 'brown eyes', nose: 'a small nose', favColor: 'red', favAnimal: 'cat', emoji: '👩' },
+    { id: 'leo', name: 'Leo Johnson', role: 'Son', age: 16, from: 'London, England', height: 'tall', hair: 'brown hair', eyes: 'green eyes', nose: 'a big nose', favColor: 'green', favAnimal: 'turtle', emoji: '👦' },
+    { id: 'emma', name: 'Emma Johnson', role: 'Daughter', age: 12, from: 'London, England', height: 'short and slim', hair: 'long blond hair', eyes: 'blue eyes', nose: 'a small nose', favColor: 'pink', favAnimal: 'horse', emoji: '👧' }
+];
+
+const extendedFamily = [
+    { id: 'grandpa', name: 'George Johnson', role: 'Grandfather', age: 70, from: 'Manchester, England', relation: "Tom's father", emoji: '👴' },
+    { id: 'grandma', name: 'Helen Johnson', role: 'Grandmother', age: 68, from: 'Birmingham, England', relation: "Tom's mother", emoji: '👵' },
+    { id: 'uncle', name: 'Robert Johnson', role: 'Uncle', age: 40, from: 'Manchester, England', relation: "Tom's brother", emoji: '👨' },
+    { id: 'aunt', name: 'Sarah Johnson', role: 'Aunt', age: 38, from: 'Oxford, England', relation: "Robert's wife", emoji: '👩' },
+    { id: 'cousin', name: 'Max Johnson', role: 'Cousin', age: 14, from: 'Manchester, England', relation: "Robert and Sarah's son", emoji: '👦' }
+];
+
+const familyText = `The Johnson Family Album
+
+Tom Johnson is the father. He is 45 years old and he is from London, England. He is tall and he has got blond hair and blue eyes. His favourite colour is blue and his favourite animal is a dog.
+
+Mary Johnson is the mother. She is 42 years old. She is not from England. She is from Paris, France. She is short and slim. She has got black hair and brown eyes. Her favourite colour is red and her favourite animal is a cat.
+
+Leo and Emma are their children. Leo is 16 years old. He is a student. He is tall and he has got brown hair and green eyes. He has got a big nose. His favourite colour is green and his favourite animal is a turtle.
+
+Emma is 12 years old. She is a student too. She is short and slim. She has got long blond hair and blue eyes. She has got a small nose and big eyes. Her favourite colour is pink. She loves horses!
+
+George and Helen are Tom's parents. George is the grandfather. He is 70 years old. Helen is the grandmother. She is 68 years old.
+
+Robert is Tom's brother. He is the uncle. He is 40 years old. Sarah is Robert's wife. She is the aunt. She is 38 years old. Max is their son. He is the cousin. He is 14 years old.`;
+
+const room1Questions = [
+    { id: 'r1q1', q: "What is the father's name?", a: ["tom", "tom johnson", "his name is tom", "the father's name is tom"] },
+    { id: 'r1q2', q: "Where is Tom from?", a: ["london", "england", "from london", "he is from london"] },
+    { id: 'r1q3', q: "How old is Tom?", a: ["45", "forty-five", "he is 45", "45 years old"] },
+    { id: 'r1q4', q: "What is the mother's name?", a: ["mary", "mary johnson", "her name is mary", "the mother's name is mary"] },
+    { id: 'r1q5', q: "Where is Mary from?", a: ["paris", "france", "from paris", "she is from paris"] },
+    { id: 'r1q6', q: "How old is Mary?", a: ["42", "forty-two", "she is 42", "42 years old"] },
+    { id: 'r1q7', q: "What colour are Tom's eyes?", a: ["blue", "blue eyes", "his eyes are blue", "he has got blue eyes"] },
+    { id: 'r1q8', q: "What colour is Mary's hair?", a: ["black", "black hair", "her hair is black", "she has got black hair"] }
+];
+
+const room2Questions = [
+    { id: 'r2q1', q: "What is Leo's height?", a: ["tall", "he is tall", "leo is tall"] },
+    { id: 'r2q2', q: "What colour are Leo's eyes?", a: ["green", "green eyes", "his eyes are green", "he has got green eyes"] },
+    { id: 'r2q3', q: "What colour is Leo's hair?", a: ["brown", "brown hair", "his hair is brown", "he has got brown hair"] },
+    { id: 'r2q4', q: "Has Leo got a big nose or a small nose?", a: ["big nose", "a big nose", "he has got a big nose", "big"] },
+    { id: 'r2q5', q: "What is Emma's height?", a: ["short", "short and slim", "she is short", "she is short and slim"] },
+    { id: 'r2q6', q: "What colour are Emma's eyes?", a: ["blue", "blue eyes", "her eyes are blue", "she has got blue eyes"] },
+    { id: 'r2q7', q: "What colour is Emma's hair?", a: ["blond", "blond hair", "long blond hair", "her hair is blond", "she has got blond hair"] },
+    { id: 'r2q8', q: "Has Emma got a big nose or a small nose?", a: ["small nose", "a small nose", "she has got a small nose", "small"] },
+    { id: 'r2q9', q: "What is Tom's favourite colour?", a: ["blue", "his favourite colour is blue"] },
+    { id: 'r2q10', q: "What is Leo's favourite animal?", a: ["turtle", "a turtle", "his favourite animal is a turtle"] }
+];
+
+const room3Questions = [
+    { id: 'r3q1', q: "Who is Tom's father?", a: ["george", "george johnson", "his father is george", "tom's father is george"] },
+    { id: 'r3q2', q: "Who is Leo's grandmother?", a: ["helen", "helen johnson", "his grandmother is helen", "leo's grandmother is helen"] },
+    { id: 'r3q3', q: "Who is Emma's uncle?", a: ["robert", "robert johnson", "her uncle is robert", "emma's uncle is robert"] },
+    { id: 'r3q4', q: "Who is Robert's wife?", a: ["sarah", "sarah johnson", "his wife is sarah", "robert's wife is sarah"] },
+    { id: 'r3q5', q: "Who is Max's cousin?", a: ["leo and emma", "leo", "emma", "his cousins are leo and emma"] },
+    { id: 'r3q6', q: "How old is Grandpa George?", a: ["70", "seventy", "he is 70", "70 years old"] },
+    { id: 'r3q7', q: "What colour is Grandma Helen's hair?", a: ["gray", "grey", "gray hair", "her hair is gray"] },
+    { id: 'r3q8', q: "Who is Sarah's son?", a: ["max", "max johnson", "her son is max", "sarah's son is max"] }
+];
+
+const room4Exercises = [
+    { id: 'be1', parts: ['Tom ', ' from London.'], blank: 'is' },
+    { id: 'be2', parts: ['Mary ', ' from Paris.'], blank: 'is' },
+    { id: 'be3', parts: ['Leo and Emma ', ' students.'], blank: 'are' },
+    { id: 'be4', parts: ['I ', ' Detective Sam.'], blank: 'am' },
+    { id: 'be5', parts: ['Tom ', ' tall.'], blank: 'is' },
+    { id: 'be6', parts: ['The children ', ' happy.'], blank: 'are' },
+    { id: 'be7', parts: ['Mary ', ' not from London.'], blank: 'is' },
+    { id: 'be8', parts: ['Emma ', ' not tall.'], blank: 'is' },
+    { id: 'be9', parts: ['Leo ', ' not a teacher.'], blank: 'is' },
+    { id: 'be10', parts: ['They ', ' not from France.'], blank: 'are' },
+    { id: 'be11', parts: ['', ' Tom from London?'], blank: 'Is' },
+    { id: 'be12', parts: ['', ' Mary from England?'], blank: 'Is' },
+    { id: 'be13', parts: ['', ' Leo and Emma students?'], blank: 'Are' },
+    { id: 'be14', parts: ['', ' they happy?'], blank: 'Are' },
+    { id: 'be15', parts: ['', ' I ready?'], blank: 'Am' }
+];
+
+const room5Exercises = [
+    { id: 'hg1', parts: ['Tom ', ' ', ' blue eyes.'], blanks: ['has', 'got'] },
+    { id: 'hg2', parts: ['Mary ', ' ', ' black hair.'], blanks: ['has', 'got'] },
+    { id: 'hg3', parts: ['Leo ', ' ', ' green eyes.'], blanks: ['has', 'got'] },
+    { id: 'hg4', parts: ['The Johnsons ', ' ', ' two children.'], blanks: ['have', 'got'] },
+    { id: 'hg5', parts: ['Emma ', ' ', ' long blond hair.'], blanks: ['has', 'got'] },
+    { id: 'hg6', parts: ['I ', ' ', ' a clue.'], blanks: ['have', 'got'] },
+    { id: 'hg7', parts: ['Mary ', ' ', ' blond hair.'], blanks: ["hasn't", 'got'] },
+    { id: 'hg8', parts: ['Leo ', ' ', ' blue eyes.'], blanks: ["hasn't", 'got'] },
+    { id: 'hg9', parts: ['Emma ', ' ', ' a turtle.'], blanks: ["hasn't", 'got'] },
+    { id: 'hg10', parts: ['They ', ' ', ' a cat.'], blanks: ["haven't", 'got'] },
+    { id: 'hg11', parts: ['', ' Tom ', ' a dog?'], blanks: ['Has', 'got'] },
+    { id: 'hg12', parts: ['', ' Mary ', ' brown eyes?'], blanks: ['Has', 'got'] },
+    { id: 'hg13', parts: ['', ' they ', ' children?'], blanks: ['Have', 'got'] },
+    { id: 'hg14', parts: ['', ' Leo ', ' a big nose?'], blanks: ['Has', 'got'] },
+    { id: 'hg15', parts: ['', ' you ', ' the code?'], blanks: ['Have', 'got'] }
+];
+
+const hints = {
+    1: ["The father's name is Tom. The mother's name is Mary.", "Tom is from London, England. Mary is from Paris, France.", "Tom is 45 years old. Mary is 42 years old."],
+    2: ["Leo is tall with brown hair and green eyes. Emma is short with blond hair and blue eyes.", "Use 'has got' for descriptions: He has got green eyes.", "Leo has got a big nose. Emma has got a small nose."],
+    3: ["George is the grandfather. Helen is the grandmother. They are Tom's parents.", "Robert is the uncle (Tom's brother). Sarah is the aunt (Robert's wife).", "Max is the cousin. He is Robert and Sarah's son."],
+    4: ["Verb TO BE: I am, You/We/They are, He/She/It is.", "For negatives: is not, are not, am not", "For questions: Is he/she? Are they? Am I?"],
+    5: ["HAVE GOT / HAS GOT: I/You/We/They have got, He/She/It has got.", "Negatives: haven't got, hasn't got", "Questions: Have I/you/we/they got? Has he/she/it got?"]
+};
+
+let state = { started: false, room: 1, time: 45*60, timer: null, hintsLeft: {1:3,2:3,3:3,4:3,5:3}, answers: {1:{},2:{},3:{},4:{},5:{}}, submitted: {1:false,2:false,3:false,4:false,5:false}, correct: {1:{},2:{},3:{},4:{},5:{}}, codes: {1:['?','?','?','?'],2:['?','?','?','?'],3:['?','?','?','?'],4:['?','?','?','?'],5:['?','?','?','?']}, won: false, lost: false, modalChar: null };
+
+function normalize(s) { return s.toLowerCase().trim().replace(/[.,!?']/g, '').replace(/\s+/g, ' '); }
+function checkAnswer(userAns, correctAns) { const n = normalize(userAns); return correctAns.some(a => normalize(a) === n || n.includes(normalize(a))); }
+function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
+function countCorrect(r) { return Object.values(state.correct[r]).filter(Boolean).length; }
+
+function render() {
+    const screens = ['introScreen', 'gameScreen', 'victoryScreen', 'gameoverScreen'];
+    screens.forEach(s => document.getElementById(s).classList.remove('active'));
+    
+    if (!state.started) { document.getElementById('introScreen').classList.add('active'); }
+    else if (state.lost) { document.getElementById('gameoverScreen').classList.add('active'); }
+    else if (state.won) { document.getElementById('victoryScreen').classList.add('active'); }
+    else { document.getElementById('gameScreen').classList.add('active'); renderGame(); }
+}
+
+function renderGame() {
+    const icons = ['🛋️', '🛏️', '👨‍👩‍👧‍👦', '🔐', '🎉'];
+    const names = ['Living Room', 'Bedrooms', 'Family Room', 'Secret Room', 'Final Room'];
+    document.getElementById('roomIcon').textContent = icons[state.room - 1];
+    document.getElementById('roomName').querySelector('span:last-child').textContent = `Room ${state.room}: ${names[state.room - 1]}`;
+    document.getElementById('hintsLeft').textContent = state.hintsLeft[state.room];
+    document.getElementById('hintBtn').disabled = state.hintsLeft[state.room] <= 0;
+    
+    let progressHTML = '';
+    for (let i = 1; i <= 5; i++) {
+        const cls = i < state.room ? 'completed' : i === state.room ? 'active' : 'pending';
+        progressHTML += `<div class="progress-step ${cls}">${i < state.room ? '✓' : i}</div>`;
+    }
+    document.getElementById('progressBar').innerHTML = progressHTML;
+    
+    document.getElementById('mainContent').innerHTML = renderRoom();
+}
+
+function renderRoom() {
+    if (state.room === 1) return renderRoom1();
+    if (state.room === 2) return renderRoom2();
+    if (state.room === 3) return renderRoom3();
+    if (state.room === 4) return renderRoom4();
+    if (state.room === 5) return renderRoom5();
+}
+
+function renderRoom1() {
+    return `<div class="card"><h2>🛋️ The Living Room</h2><p>Enter the Johnson family home. Who lives here? What are their names?</p></div>
+    <div class="card"><h3>👨‍👩‍👧‍👦 The Johnson Family</h3><p style="margin-bottom:10px;font-size:14px;">Click on each family member:</p>
+    <div class="char-grid">${characters.map(c => `<div class="char-card" onclick="showChar('${c.id}')"><div class="char-avatar">${c.emoji}</div><div class="name">${c.name}</div><div class="role">${c.role}</div></div>`).join('')}</div></div>
+    <div class="card"><h3>📝 Questions</h3><p style="font-size:13px;margin-bottom:10px;">Write complete sentences!</p>
+    ${room1Questions.map((q,i) => `<div class="question-item"><div class="question-text">${i+1}. ${q.q}</div><input type="text" class="question-input" data-room="1" data-id="${q.id}" placeholder="Write your answer..." value="${state.answers[1][q.id]||''}" ${state.submitted[1]&&state.correct[1][q.id]?'disabled':''}></div>`).join('')}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="checkRoom(1)" ${state.submitted[1]&&countCorrect(1)>=6?'disabled':''}>${state.submitted[1]?`${countCorrect(1)}/8 Correct`:'Check Answers'}</button></div>
+    ${renderCode(1, 6, 'FAMI')}`;
+}
+
+function renderRoom2() {
+    return `<div class="card"><h2>🛏️ The Bedrooms</h2><p>Learn about Leo and Emma's physical appearance!</p></div>
+    <div class="card"><h3>👤 Physical Descriptions</h3><div class="char-grid">${[characters[2],characters[3]].map(c => `<div class="char-card" onclick="showChar('${c.id}')"><div class="char-avatar">${c.emoji}</div><div class="name">${c.name}</div><div class="role">Age: ${c.age} | ${c.height}</div></div>`).join('')}</div></div>
+    <div class="card"><h3>📝 Physical Description Questions</h3><p style="font-size:13px;margin-bottom:10px;">Use "have got" or "has got"!</p>
+    ${room2Questions.map((q,i) => `<div class="question-item"><div class="question-text">${i+1}. ${q.q}</div><input type="text" class="question-input" data-room="2" data-id="${q.id}" placeholder="Write your answer..." value="${state.answers[2][q.id]||''}" ${state.submitted[2]&&state.correct[2][q.id]?'disabled':''}></div>`).join('')}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="checkRoom(2)" ${state.submitted[2]&&countCorrect(2)>=7?'disabled':''}>${state.submitted[2]?`${countCorrect(2)}/10 Correct`:'Check Answers'}</button></div>
+    ${renderCode(2, 7, 'LYFM')}`;
+}
+
+function renderRoom3() {
+    return `<div class="card"><h2>👨‍👩‍👧‍👦 The Family Room</h2><p>The Johnson family is bigger! Learn about their extended family.</p></div>
+    <div class="card"><h3>📖 Family Album</h3><div class="reading-text">${familyText}</div></div>
+    <div class="card"><h3>👨‍👩‍👧‍👦 Extended Family</h3><div class="char-grid">${extendedFamily.map(c => `<div class="char-card" onclick="showChar('${c.id}')"><div class="char-avatar">${c.emoji}</div><div class="name">${c.name.split(' ')[0]}</div><div class="role">${c.role}</div></div>`).join('')}</div></div>
+    <div class="card"><h3>📝 Family Questions</h3>
+    ${room3Questions.map((q,i) => `<div class="question-item"><div class="question-text">${i+1}. ${q.q}</div><input type="text" class="question-input" data-room="3" data-id="${q.id}" placeholder="Write your answer..." value="${state.answers[3][q.id]||''}" ${state.submitted[3]&&state.correct[3][q.id]?'disabled':''}></div>`).join('')}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="checkRoom(3)" ${state.submitted[3]&&countCorrect(3)>=6?'disabled':''}>${state.submitted[3]?`${countCorrect(3)}/8 Correct`:'Check Answers'}</button></div>
+    ${renderCode(3, 6, 'EXTD')}`;
+}
+
+function renderRoom4() {
+    return `<div class="card"><h2>🔐 The Secret Room</h2><p>Complete with verb TO BE (am, is, are).</p></div>
+    <div class="card"><h3>📚 Verb TO BE</h3><div class="grammar-box">
+    <div class="grammar-item affirmative"><h4 style="color:#22c55e">✅ Affirmative</h4><p>I <strong>am</strong><br>You/We/They <strong>are</strong><br>He/She/It <strong>is</strong></p></div>
+    <div class="grammar-item negative"><h4 style="color:#ef4444">❌ Negative</h4><p>I am <strong>not</strong><br>You/We/They are <strong>not</strong><br>He/She/It is <strong>not</strong></p></div>
+    <div class="grammar-item interrogative"><h4 style="color:#f59e0b">❓ Interrogative</h4><p><strong>Am</strong> I...?<br><strong>Are</strong> you/we/they...?<br><strong>Is</strong> he/she/it...?</p></div></div></div>
+    <div class="card"><h3>✍️ Complete the Sentences</h3><p style="font-size:13px;margin-bottom:10px;">Use: am, is, are</p>
+    ${room4Exercises.map((ex,i) => `<div class="question-item"><div style="display:flex;align-items:center;gap:4px;font-size:15px;">${i+1}. ${ex.parts[0]}<input type="text" class="blank-input" data-room="4" data-id="${ex.id}" value="${state.answers[4][ex.id]||''}" ${state.submitted[4]&&state.correct[4][ex.id]?'disabled':''}>${ex.parts[1]}</div></div>`).join('')}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="checkRoom(4)" ${state.submitted[4]&&countCorrect(4)>=10?'disabled':''}>${state.submitted[4]?`${countCorrect(4)}/15 Correct`:'Check Answers'}</button></div>
+    ${renderCode(4, 10, 'BEIN')}`;
+}
+
+function renderRoom5() {
+    return `<div class="card"><h2>🎉 The Final Room</h2><p>Complete with HAVE GOT / HAS GOT!</p></div>
+    <div class="card"><h3>📚 HAVE GOT / HAS GOT</h3><div class="grammar-box">
+    <div class="grammar-item affirmative"><h4 style="color:#22c55e">✅ Affirmative</h4><p>I/You/We/They <strong>have got</strong><br>He/She/It <strong>has got</strong></p></div>
+    <div class="grammar-item negative"><h4 style="color:#ef4444">❌ Negative</h4><p>I/You/We/They <strong>haven't got</strong><br>He/She/It <strong>hasn't got</strong></p></div>
+    <div class="grammar-item interrogative"><h4 style="color:#f59e0b">❓ Interrogative</h4><p><strong>Have</strong> I/you/we/they got...?<br><strong>Has</strong> he/she/it got...?</p></div></div></div>
+    <div class="card"><h3>✍️ Complete the Sentences</h3><p style="font-size:13px;margin-bottom:10px;">Use: have, has, got, haven't, hasn't</p>
+    ${room5Exercises.map((ex,i) => `<div class="question-item"><div style="display:flex;align-items:center;gap:4px;font-size:15px;">${i+1}. ${ex.parts[0]}<input type="text" class="blank-input" data-room="5" data-id="${ex.id}b1" value="${state.answers[5][ex.id+'b1']||''}" ${state.submitted[5]&&state.correct[5][ex.id+'b1']?'disabled':''}><input type="text" class="blank-input" data-room="5" data-id="${ex.id}b2" value="${state.answers[5][ex.id+'b2']||''}" ${state.submitted[5]&&state.correct[5][ex.id+'b2']?'disabled':''}>${ex.parts[2]}</div></div>`).join('')}
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="checkRoom(5)" ${state.submitted[5]&&countCorrect(5)>=15?'disabled':''}>${state.submitted[5]?`${countCorrect(5)}/30 Correct`:'Check Answers'}</button></div>
+    ${renderCode(5, 15, 'HAVE')}`;
+}
+
+function renderCode(room, required, code) {
+    const correct = countCorrect(room);
+    const revealed = Math.min(4, Math.floor(correct / (required / 4)));
+    let html = '<div class="code-display">';
+    for (let i = 0; i < 4; i++) {
+        const digit = i < revealed ? code[i] : '?';
+        html += `<div class="code-digit ${i < revealed ? 'revealed' : ''}">${digit}</div>`;
+    }
+    html += '</div>';
+    const canUnlock = correct >= required;
+    const btnText = room === 5 ? '🎉 Find the Johnson Family!' : `🚪 Unlock Room ${room + 1}`;
+    html += `<button class="btn btn-success" style="width:100%;" onclick="unlockRoom(${room})" ${!canUnlock?'disabled':''}>${btnText}</button>`;
+    return `<div class="card" style="text-align:center;border-color:#f59e0b;">${html}</div>`;
+}
+
+function showChar(id) {
+    const all = [...characters, ...extendedFamily];
+    const c = all.find(x => x.id === id);
+    if (!c) return;
+    state.modalChar = c;
+    document.getElementById('modalAvatar').textContent = c.emoji;
+    document.getElementById('modalName').textContent = c.name;
+    document.getElementById('modalRole').textContent = c.role;
+    let info = '';
+    if (c.age) info += `<div class="info-item"><strong>Age:</strong> ${c.age} years old</div>`;
+    if (c.from) info += `<div class="info-item"><strong>From:</strong> ${c.from}</div>`;
+    if (c.height) info += `<div class="info-item"><strong>Height:</strong> ${c.height}</div>`;
+    if (c.hair) info += `<div class="info-item"><strong>Hair:</strong> ${c.hair}</div>`;
+    if (c.eyes) info += `<div class="info-item"><strong>Eyes:</strong> ${c.eyes}</div>`;
+    if (c.nose) info += `<div class="info-item"><strong>Nose:</strong> ${c.nose}</div>`;
+    if (c.favColor) info += `<div class="info-item"><strong>Favourite Colour:</strong> ${c.favColor}</div>`;
+    if (c.favAnimal) info += `<div class="info-item"><strong>Favourite Animal:</strong> ${c.favAnimal}</div>`;
+    if (c.relation) info += `<div class="info-item"><strong>Relation:</strong> ${c.relation}</div>`;
+    document.getElementById('modalInfo').innerHTML = info;
+    document.getElementById('charModal').classList.add('active');
+}
+
+function closeModal() { document.getElementById('charModal').classList.remove('active'); }
+
+function useHint() {
+    const used = 3 - state.hintsLeft[state.room];
+    if (used < hints[state.room].length) {
+        document.getElementById('hintText').textContent = hints[state.room][used];
+        document.getElementById('hintModal').classList.add('active');
+        state.hintsLeft[state.room]--;
+        document.getElementById('hintsLeft').textContent = state.hintsLeft[state.room];
+        document.getElementById('hintBtn').disabled = state.hintsLeft[state.room] <= 0;
+    }
+}
+
+function closeHintModal() { document.getElementById('hintModal').classList.remove('active'); }
+
+function checkRoom(room) {
+    state.submitted[room] = true;
+    const inputs = document.querySelectorAll(`[data-room="${room}"]`);
+    inputs.forEach(input => { state.answers[room][input.dataset.id] = input.value; });
+    
+    if (room === 1) {
+        room1Questions.forEach(q => { state.correct[1][q.id] = checkAnswer(state.answers[1][q.id], q.a); });
+    } else if (room === 2) {
+        room2Questions.forEach(q => { state.correct[2][q.id] = checkAnswer(state.answers[2][q.id], q.a); });
+    } else if (room === 3) {
+        room3Questions.forEach(q => { state.correct[3][q.id] = checkAnswer(state.answers[3][q.id], q.a); });
+    } else if (room === 4) {
+        room4Exercises.forEach(ex => { state.correct[4][ex.id] = normalize(state.answers[4][ex.id]) === normalize(ex.blank); });
+    } else if (room === 5) {
+        room5Exercises.forEach(ex => {
+            state.correct[5][ex.id + 'b1'] = normalize(state.answers[5][ex.id + 'b1']) === normalize(ex.blanks[0]);
+            state.correct[5][ex.id + 'b2'] = normalize(state.answers[5][ex.id + 'b2']) === normalize(ex.blanks[1]);
+        });
+    }
+    render();
+}
+
+function unlockRoom(room) {
+    if (room < 5) {
+        state.room = room + 1;
+        render();
+        window.scrollTo(0, 0);
+    } else {
+        state.won = true;
+        clearInterval(state.timer);
+        const timeSpent = 45 * 60 - state.time;
+        document.getElementById('finalTime').textContent = `⏱️ Time: ${Math.floor(timeSpent/60)} minutes and ${timeSpent%60} seconds`;
+        render();
+    }
+}
+
+function startGame() {
+    state.started = true;
+    state.timer = setInterval(() => {
+        state.time--;
+        const timerEl = document.getElementById('timer');
+        timerEl.textContent = `⏱️ ${formatTime(state.time)}`;
+        if (state.time < 300) { timerEl.classList.add('warning'); }
+        if (state.time <= 0) { state.lost = true; clearInterval(state.timer); render(); }
+    }, 1000);
+    render();
+}
+
+document.getElementById('charModal').addEventListener('click', e => { if (e.target.id === 'charModal') closeModal(); });
+    </script>
+</body>
+</html>
